@@ -1,6 +1,7 @@
 "use client";
 import {FormEvent,useEffect,useMemo,useState} from "react";
 import {ArrowRight,BriefcaseBusiness,Check,Clipboard,FileSearch,LoaderCircle,Plus,Sparkles,Target} from "lucide-react";
+import {analyzeJobLocally} from "@/lib/analyze";
 
 type Status="Analyzed"|"Applied"|"Interview";
 type Analysis={score:number;matchedSkills:string[];missingSkills:string[];summary:string;coverLetter:string;recruiterMessage:string;resumeSuggestions:string[]};
@@ -17,7 +18,7 @@ export default function Home(){
  const [analysis,setAnalysis]=useState<Analysis|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(""),[copied,setCopied]=useState("");
  useEffect(()=>{const saved=localStorage.getItem("rolepilot-applications");if(saved)setApps(JSON.parse(saved))},[]);
  const stats=useMemo(()=>({tracked:apps.length,interviews:apps.filter(a=>a.status==="Interview").length,average:apps.length?Math.round(apps.reduce((s,a)=>s+a.score,0)/apps.length):0}),[apps]);
- async function analyze(e:FormEvent){e.preventDefault();setError("");setLoading(true);setAnalysis(null);try{const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({role,company,jobDescription:jd,profile})});const data=await r.json();if(!r.ok)throw new Error(data.error);setAnalysis(data)}catch(e){setError(e instanceof Error?e.message:"Could not analyze this job.")}finally{setLoading(false)}}
+ async function analyze(e:FormEvent){e.preventDefault();setError("");setLoading(true);setAnalysis(null);try{await new Promise(r=>setTimeout(r,450));setAnalysis(analyzeJobLocally(role,company,jd,profile))}catch(e){setError(e instanceof Error?e.message:"Could not analyze this job.")}finally{setLoading(false)}}
  function save(){if(!analysis)return;const next=[{...analysis,id:crypto.randomUUID(),role,company,status:"Analyzed" as Status,createdAt:new Intl.DateTimeFormat("en-IN",{day:"2-digit",month:"short"}).format(new Date())},...apps.filter(a=>!a.id.startsWith("sample-"))];setApps(next);localStorage.setItem("rolepilot-applications",JSON.stringify(next));setAnalysis(null);setRole("");setCompany("");setJd("")}
  function advance(id:string){const flow:Status[]=["Analyzed","Applied","Interview"];const next=apps.map(a=>a.id===id?{...a,status:flow[(flow.indexOf(a.status)+1)%flow.length]}:a);setApps(next);localStorage.setItem("rolepilot-applications",JSON.stringify(next))}
  async function copy(text:string,label:string){await navigator.clipboard.writeText(text);setCopied(label);setTimeout(()=>setCopied(""),1300)}
