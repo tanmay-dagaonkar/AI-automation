@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RolePilot — AI Job Application Copilot",
-  description: "Analyze job fit, tailor application drafts, and track every opportunity.",
+  title: "RolePilot — Resume Review Workflow",
+  description: "Upload a resume and job URL, approve the review, and receive evidence-based application feedback.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

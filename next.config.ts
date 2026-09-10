@@ -1,10 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  trailingSlash: true,
-  basePath: "/AI-automation",
-  assetPrefix: "/AI-automation/",
+  serverExternalPackages: ["pdf-parse"],
 };
 
 export default nextConfig;

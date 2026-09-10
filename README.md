@@ -1,35 +1,39 @@
-# RolePilot — AI Job Application Copilot
+# RolePilot
 
-A focused, browser-based MVP that turns a job description and candidate profile into an explainable fit score, honest skill gaps, resume suggestions, a recruiter message, a tailored cover letter, and a device-local application tracker.
+A deliberately small resume-review workflow:
+
+1. A candidate uploads a PDF resume and public job-description URL.
+2. The PDF is stored in MongoDB GridFS; extracted text and metadata are stored in `rolepilot.applications`.
+3. The record waits in `pending_approval` until the owner approves it in ChatGPT or the dashboard.
+4. The public job page is fetched with SSRF and size protections, then compared with the resume.
+5. A structured score and practical improvements are stored and shown using a private browser tracking token.
 
 ## Run locally
 
 ```bash
-pnpm install
+cp .env.example .env.local
+pnpm install --ignore-scripts
 pnpm dev
 ```
 
-Open `http://localhost:3000`.
+Use a MongoDB database user limited to read/write access on `rolepilot`. Resume files are limited to text-based PDFs up to 4 MB so the multipart request stays below Vercel's function payload limit.
 
-## Architecture
+## Deploy
 
-- Next.js, React, and TypeScript
-- free, explainable browser-side analysis for a testable MVP
-- browser `localStorage` for saved applications
+This version requires a server and cannot run on GitHub Pages. Import the repository into Vercel, set the `.env.example` variables, and deploy it as a normal Next.js project. GitHub remains the source repository; Vercel supplies the API runtime and secrets.
 
-A production iteration can replace `analyzeJobLocally()` with OpenAI or Azure OpenAI structured output while preserving the UI and response shape.
+For MongoDB Atlas, allow the hosting provider's outbound network access and use a strong app-specific password. Never put connection strings or API keys in GitHub.
 
-## Production
+## ChatGPT approval workflow
 
-Every push to `main` builds and deploys the static application to GitHub Pages through `.github/workflows/deploy-pages.yml`.
+The hourly check uses the connected MongoDB Atlas account. It finds `rolepilot.applications` records with `status: "pending_approval"` and no `notifiedAt`. The notification includes the record ID, candidate name, and job URL, then asks the owner whether to analyze it.
 
-## MVP guardrails
+After the owner says yes, ChatGPT reads `resumeText` and `jobUrl`, retrieves the public job description, produces the `ApplicationResult` shape in `lib/types.ts`, and updates the record to `status: "completed"` with `result` and a current `updatedAt`. If a job site blocks access, use `fallbackJobDescription`. Never infer experience absent from `resumeText`.
 
-- Never invent candidate experience.
-- Show gaps instead of hiding them.
-- Keep application data on the current device.
-- No authentication, database, scraping, or auto-applying in v1.
+## Security boundaries
 
-## Validation
-
-Use it for 10 real applications. Measure tailoring time and recruiter response rate before adding integrations.
+- Public responses omit resume text, candidate email, stored-file IDs, and credentials.
+- Owner listing and server-side analysis require `ADMIN_KEY`.
+- Tracking tokens are random and stored only as SHA-256 hashes.
+- Job redirects are checked against private and link-local networks.
+- This MVP intentionally omits accounts, billing, OCR, and broad file-format support.
